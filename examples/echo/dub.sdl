@@ -1,0 +1,7 @@
+name "dropin-echo"
+description "Sample dropin plugin that echoes opcode 100"
+license "MIT"
+targetType "dynamicLibrary"
+targetName "dropin-echo"
+sourcePaths "source"
+importPaths "source"

@@ -1,0 +1,8 @@
+tasks {
+  task "write-spec" {
+    title "Write the spec"
+    status "open"
+    owner "agent"
+    detail "The window reloads this file when it changes."
+  }
+}

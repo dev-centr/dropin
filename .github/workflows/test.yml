@@ -1,0 +1,16 @@
+name: test
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-latest
+      - name: Unit tests
+        run: dub test --compiler=ldc2
+      - name: CLI build
+        run: dub build --compiler=ldc2

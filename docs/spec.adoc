@@ -1,0 +1,55 @@
+= Drop-in engine
+:description: File-backed request ring, resident engine, plugin ABI, and garbage-collector boundary for dropin.
+
+The library is the resident process and the clients that talk to it. A desktop app, or any other product, can ship its own window that only watches a file.
+
+== Ring
+
+One file per session: `ring.bin` under `$DROPIN_HOME/sessions/<session>/` (`%USERPROFILE%\.dropin` when `DROPIN_HOME` is unset). Every client maps that file. Atomics decide whose turn it is. The mapping is not registered with a garbage collector.
+
+Layout version 1:
+
+* Header: magic `DRIN`, version, capacity 32, payload 8192 bytes, owner pid, generation, ticket, head, task revision, plugin generation, task path.
+* 32 slots. Each slot is a ticket, a state (`free`, `ready`, `claimed`, `done`), an opcode, and two 8192-byte buffers.
+
+Opcodes: `ping`, `status`, `shutdown`, `tasks-put`, `tasks-get`, `reload`, `notify`, `handoff`.
+
+A publisher takes the next ticket only when the ring is not full, writes the slot, then publishes `ready`. The engine claims it, writes the response, and marks `done`. The publisher copies the response and marks the slot `free`.
+
+== Ownership and handoff
+
+`ownerPid` is the engine allowed to consume. `busy` is held while that engine is inside one slot. A new process waits until `busy` is clear, then swaps `ownerPid` to itself and increments `engineGen`. The old process finishes the slot it already claimed, notices it is no longer the owner, and exits. The new process must be a separate file. Do not overwrite the executable that is still mapped by the operating system.
+
+`dropin reset` deletes `ring.bin` only when the recorded owner is not a live process.
+
+== Plugins
+
+The engine can load one shared library at a time. Windows locks a loaded DLL, so the engine copies the file to `plugins/plugin-<generation>.dll` (or `.so` / `.dylib`) and loads the copy.
+
+[source,d]
+----
+extern(C) export int dropin_plugin_abi();
+extern(C) export int dropin_plugin_attach();
+extern(C) export void dropin_plugin_detach();
+extern(C) export int dropin_plugin_call(uint opcode, const(char)* req, uint reqLen,
+    char* resp, uint respCap, uint* respLen);
+----
+
+`dropin_plugin_abi` returns 1. `dropin_plugin_call` returns 1 when it handled the opcode, 0 when the engine should use the built-in command, and a negative value on failure. Buffers point at the ring slot for the duration of the call only.
+
+The plugin is a separate image. It can link tgc, the default GC, or no GC. The host does not share that heap. Anything that must survive a reload belongs in the task file or the ring.
+
+== Task file
+
+`tasks.sdl` beside the ring is the document clients and windows share. The writer replaces it by writing a temporary file and renaming it over the destination. The SDL shape is the `tasks { task "id" { ... } }` document described in the DevCentr drop-in spec.
+
+== What D already had
+
+D does not have a maintained hot-swap resident engine.
+
+* link:https://github.com/kingsleyh/reloaded[reloaded] (2015) rebuilds a dub program and starts it again. The old process is gone.
+* A forum reply on that tool describes the host-plus-shared-library shape this project uses for plugins.
+* `std.ipc` was a GSoC proposal for Boost.Interprocess-style shared memory. It did not land in Phobos.
+* link:https://code.dlang.org/packages/conduit[conduit] is POSIX shared memory and Unix sockets, `@nogc`, without Windows and without a process handoff.
+
+The ring is ordinary mapped bytes so those gaps do not decide the garbage collector.

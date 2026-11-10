@@ -1,0 +1,33 @@
+name "dropin"
+description "Resident engine, CLI, and MCP for hot-swappable app control"
+authors "Dev-Centr contributors"
+copyright "Copyright © 2026 Dev-Centr contributors"
+license "MIT"
+homepage "https://docs.devcentr.org/platforms/specifications/components/dropin/"
+
+targetType "executable"
+targetName "dropin"
+mainSourceFile "source/dropin/cli.d"
+sourcePaths "source"
+importPaths "source"
+excludedSourceFiles "source/dropin/testmain.d"
+defaultConfiguration "cli"
+
+configuration "cli" {
+    targetType "executable"
+    targetName "dropin"
+    mainSourceFile "source/dropin/cli.d"
+    excludedSourceFiles "source/dropin/testmain.d"
+}
+
+configuration "library" {
+    targetType "library"
+    targetName "dropin"
+    excludedSourceFiles "source/dropin/cli.d" "source/dropin/testmain.d"
+}
+
+configuration "unittest" {
+    targetType "executable"
+    mainSourceFile "source/dropin/testmain.d"
+    excludedSourceFiles "source/dropin/cli.d"
+}

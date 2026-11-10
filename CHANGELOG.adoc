@@ -1,0 +1,8 @@
+= Changelog
+
+== 2026-11-10
+
+=== Resident engine, CLI, and MCP
+
+* First cut of the session ring, the resident engine, CLI, MCP server, task-file writer, plugin reload, and engine handoff.
+* The ring is raw mapped bytes so callers can use the default GC, tgc, or `@nogc`.
